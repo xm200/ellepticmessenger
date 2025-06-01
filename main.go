@@ -12,15 +12,11 @@ import (
 	"net/http"
 )
 
-func generateKeyPair(w http.ResponseWriter, r *http.Request) error {
+func generateKeyPair() (string, string) {
 	serverCurve := ecdh.X25519()
 	PrivateKey, err := serverCurve.GenerateKey(rand.Reader)
 	if err != nil {
-		_, err := fmt.Fprintf(w, "Error occured, try later %v", err)
-		if err != nil {
-			return err
-		}
-		return err
+		return "", ""
 	}
 
 	PrivKey := ""
@@ -33,35 +29,57 @@ func generateKeyPair(w http.ResponseWriter, r *http.Request) error {
 		PubKey = PubKey + fmt.Sprintf("%x", b)
 	}
 
-	_, err = fmt.Fprintf(w, "{\"PrivKey\":\"%v\",\"Pubkey\":\"%v\"}", PrivKey, PubKey)
-	if err != nil {
-		return err
-	}
-
 	log.Println("Generated keypair")
-	return nil
+	return PrivKey, PubKey
 }
 
 func LoginFront(w http.ResponseWriter, r *http.Request) {
-	_, err := template.ParseFiles("./static/login.html")
+	tmpl, err := template.ParseFiles("./static/html/login.html")
 	if err != nil {
 		return
 	}
+
+	tmpl.Execute(w, nil)
 
 	log.Println("Somebody want to login")
 }
 
-func LoginBack(w http.ResponseWriter, r *http.Request) {
+func LoginBack(w http.ResponseWriter, r *http.Request) (string, string) {
+	username, password := r.FormValue("username"), r.FormValue("password")
+	if username == "" || password == "" {
+		http.Error(w, "Authentication failed", http.StatusForbidden)
+	}
+	u, err := storage.GetParamsFromDB(username, password)
 
+	if err != nil {
+		log.Println(err)
+		log.Println("%v %v", u.Username, u.Password)
+		http.Error(w, "Authentication failed", http.StatusForbidden)
+		return "", ""
+	}
+	log.Println("%v %v", u.Username, u.Password)
+	return generateKeyPair()
 }
 
-func Register(w http.ResponseWriter, r *http.Request) {
-	_, err := template.ParseFiles("./static/register.html")
+func RegisterFront(w http.ResponseWriter, r *http.Request) {
+	tmpl, err := template.ParseFiles("./static/html/register.html")
 	if err != nil {
 		return
 	}
 
+	tmpl.Execute(w, nil)
+
 	log.Println("Somebody want to register")
+}
+
+func RegisterBack(w http.ResponseWriter, r *http.Request) {
+	username, password := r.FormValue("username"), r.FormValue("password")
+	if username == "" || password == "" {
+		http.Error(w, "Authentication failed", http.StatusForbidden)
+	}
+
+	storage.CreateUser(username, password)
+	log.Println("Somebody want to register 2")
 }
 
 func main() {
@@ -93,21 +111,13 @@ func main() {
 		switch r.Method {
 		case http.MethodGet:
 			{
-				Register(w, r)
+				RegisterFront(w, r)
 			}
 		case http.MethodPost:
 			{
-				Register(w, r)
+				RegisterBack(w, r)
 			}
 		default:
-			http.Error(w, "Method now allowed", http.StatusMethodNotAllowed)
-		}
-	})
-
-	mux.HandleFunc("/keypair", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet {
-			generateKeyPair(w, r)
-		} else {
 			http.Error(w, "Method now allowed", http.StatusMethodNotAllowed)
 		}
 	})

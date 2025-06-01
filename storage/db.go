@@ -7,11 +7,11 @@ import (
 	"log"
 )
 
-var db *sql.DB
+var DB *sql.DB
 
 func GetParamsFromDB(username, password string) (user.User, error) {
 	var err error
-	db, err = sql.Open("sqlite3", "./db/users.db")
+	DB, err = sql.Open("sqlite3", "./db/users.db")
 
 	if err != nil {
 		return user.User{}, err
@@ -19,39 +19,41 @@ func GetParamsFromDB(username, password string) (user.User, error) {
 
 	var u user.User
 	s := "SELECT * FROM users WHERE username=?"
-	err = db.QueryRow(s, username).Scan(&u.Username, &u.Password)
+	err = DB.QueryRow(s, username).Scan(&u.Username, &u.Password)
 
 	if u.Password != password || err != nil {
 		return user.User{}, err
 	}
+	defer DB.Close()
 
 	return u, nil
 }
 
-func CreateUser(username, password string) error {
+func CreateUser(username, password string) {
 	u, err := GetParamsFromDB(username, password)
 
 	if err != nil {
-		return err
+		log.Println(err)
 	}
 
 	if user.Equal(u, user.User{}) {
-		return err
+		log.Println(err)
 	}
 
-	db, err = sql.Open("sqlite3", "./db/users.db")
+	DB, err = sql.Open("sqlite3", "./db/users.db")
 	if err != nil {
-		return err
+		log.Println(err)
 	}
 
-	_, err = db.Exec(
-		"INSERT INTO users(username, password) VALUES (?, ?)",
-		username,
-		password,
-	)
-
+	tx, err := DB.Begin()
 	if err != nil {
-		return err
+		log.Println(err)
+	}
+
+	_, err = tx.Exec("INSERT INTO users(username, password) VALUES (?, ?)", u.Username, u.Password)
+	tx.Commit()
+	if err != nil {
+		log.Println(err)
 	}
 
 	defer func(db *sql.DB) {
@@ -59,28 +61,28 @@ func CreateUser(username, password string) error {
 		if err != nil {
 			log.Fatal(err)
 		}
-	}(db)
-	return nil
+	}(DB)
 }
 
 func CreateDB() error {
 	var err error
-	db, err = sql.Open("sqlite3", "./db/users.db")
+	DB, err = sql.Open("sqlite3", "./db/users.db")
+	tx, err := DB.Begin()
 	if err != nil {
-		return err
+		log.Println(err)
 	}
 
 	create := `
-	CREATE TABLE IF NOT EXISTS users (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
- 	        username TEXT NOT NULL UNIQUE,
+	CREATE TABLE users (
+ 	        username TEXT NOT NULL,
         	password TEXT NOT NULL
     	);`
 
-	_, err = db.Exec(create)
+	_, err = tx.Exec(create)
+	tx.Commit()
 	if err != nil {
-		return err
+		log.Println(err)
 	}
-
+	defer DB.Close()
 	return nil
 }
