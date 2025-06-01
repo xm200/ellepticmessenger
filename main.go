@@ -4,9 +4,14 @@ import (
 	"crypto/ecdh"
 	"crypto/rand"
 	"crypto/tls"
+	"database/sql"
 	"fmt"
-	"net/http"
 	"log"
+	"net/http"
+	"db.go"
+	"httpserver/db.go"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 
@@ -17,17 +22,55 @@ func generateKeyPair(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Error occured, try later")
 		return
 	}
-	fmt.Fprintf(w, "%v, %v", ClientPrivKey, ClientPrivKey.PublicKey())
+
+	PrivKey := ""
+	for _, b := range ClientPrivKey.Bytes() {
+		PrivKey = PrivKey + fmt.Sprintf("%x", b)
+	}
+
+	PubKey := ""
+	for _, b := range ClientPrivKey.PublicKey().Bytes() {
+		PubKey = PubKey + fmt.Sprintf("%x", b)
+	}
+
+	fmt.Fprintf(w, "{\"PrivKey\":\"%v\",\"Pubkey\":\"%v\"}", PrivKey, PubKey)
 	log.Println("Generated keypair")
 }
 
 
 func Login(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Query().Get("username") == "" || r.URL.Query().Get("password") == "" {
-		fmt.Fprintf(w, "Provide username and password to login")
+	if (r.FormValue("username") == "" && r.FormValue("password") == "") || (r.FormValue("email") == "" && r.FormValue("password") == "") {
+		fmt.Fprintf(w, "Provide password, and email or username")
 		return
 	}
-	log.Println("Somebody on login")
+
+	password := r.FormValue("password")
+	username := ""
+
+	if r.FormValue("email") == "" {
+		username = r.FormValue("username") 	
+	} else {
+		username = r.FormValue("email")
+	}
+
+	db, err := sql.Open("sqlite3", "test.db")
+
+	if err != nil {
+		log.Println("Fatal db error")
+		return
+	}
+	
+	rows, err := 
+
+	if err != nil {
+		log.Println("SQL Error while logging in")
+	}
+
+	if rows. [0] != password {
+		http.Error(w, "There is no such user or no such password")
+	}
+
+	db.Close()
 }
 
 
@@ -36,7 +79,24 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Provide email, username, password")
 		return
 	}
-	log.Println("Somebody on reqister")
+	
+	db, err := sql.Open("sqlite3", "test.db")
+
+	if err != nil {
+		log.Println("Fatal db error")
+		return
+	}
+	
+	_, err = db.Exec("insert into users (email, username, password) values ($3, $1, $2)", r.URL.Query().Get("email"), r.URL.Query().Get("username"), r.URL.Query().Get("password"))
+	if err != nil {
+		log.Println("Fatal insert error")
+	}
+
+	err = db.Close()
+	if err != nil {
+		log.Println("Fatal insert error")
+	}
+
 }
 
 
@@ -80,7 +140,7 @@ func main() {
 
 
 	cfg := &tls.Config{
-		MinVersion: tls.VersionTLS12,
+		MinVersion: tls.VersionTLS13,
 		CurvePreferences: []tls.CurveID{tls.CurveP256, tls.CurveP384, tls.CurveP521},
 	}
 
