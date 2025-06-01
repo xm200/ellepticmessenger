@@ -4,13 +4,14 @@ import (
 	"database/sql"
 	"emess/user"
 	_ "github.com/mattn/go-sqlite3"
+	"log"
 )
 
 var db *sql.DB
 
 func GetParamsFromDB(username, password string) (user.User, error) {
 	var err error
-	db, err = sql.Open("sqlite3", "./test.db")
+	db, err = sql.Open("sqlite3", "./db/users.db")
 
 	if err != nil {
 		return user.User{}, err
@@ -20,7 +21,7 @@ func GetParamsFromDB(username, password string) (user.User, error) {
 	s := "SELECT * FROM users WHERE username=?"
 	err = db.QueryRow(s, username).Scan(&u.Username, &u.Password)
 
-	if err != nil {
+	if u.Password != password || err != nil {
 		return user.User{}, err
 	}
 
@@ -38,12 +39,33 @@ func CreateUser(username, password string) error {
 		return err
 	}
 
+	db, err = sql.Open("sqlite3", "./db/users.db")
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(
+		"INSERT INTO users(username, password) VALUES (?, ?)",
+		username,
+		password,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	defer func(db *sql.DB) {
+		err := db.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}(db)
 	return nil
 }
 
 func createDB() error {
 	var err error
-	db, err = sql.Open("sqlite3", "./test.db")
+	db, err = sql.Open("sqlite3", "./db/users.db")
 	if err != nil {
 		return err
 	}

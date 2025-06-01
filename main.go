@@ -10,12 +10,15 @@ import (
 	"net/http"
 )
 
-func generateKeyPair(w http.ResponseWriter, r *http.Request) {
+func generateKeyPair(w http.ResponseWriter, r *http.Request) error {
 	serverCurve := ecdh.X25519()
 	PrivateKey, err := serverCurve.GenerateKey(rand.Reader)
 	if err != nil {
-		fmt.Fprintf(w, "Error occured, try later %v", err)
-		return
+		_, err := fmt.Fprintf(w, "Error occured, try later %v", err)
+		if err != nil {
+			return err
+		}
+		return err
 	}
 
 	PrivKey := ""
@@ -28,8 +31,13 @@ func generateKeyPair(w http.ResponseWriter, r *http.Request) {
 		PubKey = PubKey + fmt.Sprintf("%x", b)
 	}
 
-	fmt.Fprintf(w, "{\"PrivKey\":\"%v\",\"Pubkey\":\"%v\"}", PrivKey, PubKey)
+	_, err = fmt.Fprintf(w, "{\"PrivKey\":\"%v\",\"Pubkey\":\"%v\"}", PrivKey, PubKey)
+	if err != nil {
+		return err
+	}
+
 	log.Println("Generated keypair")
+	return nil
 }
 
 func Login(w http.ResponseWriter, r *http.Request) {
