@@ -63,7 +63,7 @@ func CreateUser(username, password string) error {
 	return nil
 }
 
-func createDB() error {
+func CreateDB() error {
 	var err error
 	db, err = sql.Open("sqlite3", "./db/users.db")
 	if err != nil {

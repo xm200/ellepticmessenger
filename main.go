@@ -4,8 +4,10 @@ import (
 	"crypto/ecdh"
 	"crypto/rand"
 	"crypto/tls"
+	"emess/storage"
 	"fmt"
 	_ "github.com/mattn/go-sqlite3"
+	"html/template"
 	"log"
 	"net/http"
 )
@@ -40,26 +42,47 @@ func generateKeyPair(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func Login(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Will be right back")
+func LoginFront(w http.ResponseWriter, r *http.Request) {
+	_, err := template.ParseFiles("./static/login.html")
+	if err != nil {
+		return
+	}
+
+	log.Println("Somebody want to login")
+}
+
+func LoginBack(w http.ResponseWriter, r *http.Request) {
+
 }
 
 func Register(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Will be right back")
+	_, err := template.ParseFiles("./static/register.html")
+	if err != nil {
+		return
+	}
+
+	log.Println("Somebody want to register")
 }
 
 func main() {
+	err := storage.CreateDB()
+
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			{
-				Login(w, r)
+				LoginFront(w, r)
 			}
 		case http.MethodPost:
 			{
-				Login(w, r)
+				LoginBack(w, r)
 			}
 		default:
 			http.Error(w, "Method now allowed", http.StatusMethodNotAllowed)
