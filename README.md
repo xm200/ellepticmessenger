@@ -18,6 +18,7 @@ It is decentralized, secure and little bit anonymous messenger.
       - 2.4.1.4 You send encrypted message via server
       - 2.4.1.5 User decrypt it with it`s private key
       - 2.4.1.6 User making steps 3 and 4, but for you
+        
       Great! You are chatting
     - 2.4.2 If the answer is negative.
       - 2.4.2.1 Sorry but you can`t chat
@@ -27,4 +28,5 @@ It is decentralized, secure and little bit anonymous messenger.
     - 3.3 The server getting agreed users public keys, and send it`s public key to them
     - 3.4 They send encrypted messages (with server public key) to it, and it is decrypted by it
     - 3.5 Server encrypt message for each user separately and send it
+      
     Great, you are chatting with many people!
