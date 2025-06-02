@@ -1,116 +1,18 @@
 package main
 
 import (
-	"crypto/ecdh"
-	"crypto/rand"
 	"crypto/tls"
+	"emess/backend"
+	"emess/frontend"
 	"emess/storage"
-	"fmt"
 	_ "github.com/mattn/go-sqlite3"
-	"html/template"
 	"log"
 	"net/http"
+	"strings"
 )
 
-func generateKeyPair() (string, string) {
-	serverCurve := ecdh.X25519()
-	PrivateKey, err := serverCurve.GenerateKey(rand.Reader)
-	if err != nil {
-		return "", ""
-	}
-
-	PrivKey := ""
-	for _, b := range PrivateKey.Bytes() {
-		PrivKey = PrivKey + fmt.Sprintf("%x", b)
-	}
-
-	PubKey := ""
-	for _, b := range PrivateKey.PublicKey().Bytes() {
-		PubKey = PubKey + fmt.Sprintf("%x", b)
-	}
-
-	log.Println("Generated keypair")
-	return PrivKey, PubKey
-}
-
-func LoginFront(w http.ResponseWriter, r *http.Request) {
-	tmpl, err := template.ParseFiles("./static/html/login.html")
-	if err != nil {
-		return
-	}
-
-	tmpl.Execute(w, nil)
-
-	log.Println("Somebody want to login")
-}
-
-func LoginBack(w http.ResponseWriter, r *http.Request) {
-	username, password := r.FormValue("username"), r.FormValue("password")
-	if username == "" || password == "" {
-		http.Error(w, "Authentication failed", http.StatusForbidden)
-	}
-	u, err := storage.GetParamsFromDB(username, password)
-
-	if err != nil {
-		log.Println(err)
-		log.Printf("%v %v\n", u.Username, u.Password)
-		http.Error(w, "Authentication failed", http.StatusForbidden)
-		return
-	}
-	log.Printf("%v %v\n", u.Username, u.Password)
-	priv, pub := generateKeyPair()
-	_, err = fmt.Fprintf(w, "Your keypair is %s %s", priv, pub)
-	if err != nil {
-		return
-	}
-}
-
-func RegisterFront(w http.ResponseWriter, r *http.Request) {
-	tmpl, err := template.ParseFiles("./static/html/register.html")
-	if err != nil {
-		return
-	}
-
-	err = tmpl.Execute(w, nil)
-	if err != nil {
-		return
-	}
-
-	log.Println("Somebody want to register")
-}
-
-func RegisterBack(w http.ResponseWriter, r *http.Request) {
-	username, password := r.FormValue("username"), r.FormValue("password")
-	if username == "" || password == "" {
-		http.Error(w, "Authentication failed", http.StatusForbidden)
-	}
-
-	storage.CreateUser(username, password)
-	u, err := storage.GetParamsFromDB(username, password)
-	if err != nil {
-		_, err := fmt.Fprintf(w, "%v %v %v", u.Username, u.Password, "Some errors")
-		if err != nil {
-			return
-		}
-	}
-	log.Println("Somebody want to register 2")
-}
-
-func Home(w http.ResponseWriter, r *http.Request) {
-	tmpl, err := template.ParseFiles("./static/html/home.html")
-	if err != nil {
-		return
-	}
-
-	err = tmpl.Execute(w, nil)
-	if err != nil {
-		return
-	}
-
-	log.Println("Somebody want to go home")
-}
-
 func main() {
+	backend.SetSecretKey()
 	err := storage.CreateDB()
 
 	if err != nil {
@@ -124,11 +26,11 @@ func main() {
 		switch r.Method {
 		case http.MethodGet:
 			{
-				LoginFront(w, r)
+				frontend.Login(w, r)
 			}
 		case http.MethodPost:
 			{
-				LoginBack(w, r)
+				backend.Login(w, r)
 			}
 		default:
 			http.Error(w, "Method now allowed", http.StatusMethodNotAllowed)
@@ -139,7 +41,7 @@ func main() {
 		switch r.Method {
 		case http.MethodGet:
 			{
-				Home(w, r)
+				frontend.Home(w, r)
 			}
 		default:
 			http.Error(w, "Method now allowed", http.StatusMethodNotAllowed)
@@ -150,16 +52,27 @@ func main() {
 		switch r.Method {
 		case http.MethodGet:
 			{
-				RegisterFront(w, r)
+				frontend.Register(w, r)
 			}
 		case http.MethodPost:
 			{
-				RegisterBack(w, r)
+				backend.Register(w, r)
 			}
 		default:
 			http.Error(w, "Method now allowed", http.StatusMethodNotAllowed)
 		}
 	})
+
+	mux.Handle("/static/", http.StripPrefix("/static/",
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.HasSuffix(r.URL.Path, ".css") {
+				w.Header().Set("Content-Type", "text/css")
+			}
+			if strings.HasSuffix(r.URL.Path, ".js") {
+				w.Header().Set("Content-Type", "text/javascript")
+			}
+			http.FileServer(http.Dir("static")).ServeHTTP(w, r)
+		})))
 
 	cfg := &tls.Config{
 		MinVersion:       tls.VersionTLS13,

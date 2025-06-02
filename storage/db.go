@@ -11,6 +11,7 @@ var DB *sql.DB
 
 func GetParamsFromDB(username, password string) (user.User, error) {
 	var err error
+	log.Println(username, password)
 	DB, err = sql.Open("sqlite3", "./db/users.db")
 
 	if err != nil {
@@ -18,13 +19,13 @@ func GetParamsFromDB(username, password string) (user.User, error) {
 	}
 
 	var u user.User
-	s := "SELECT * FROM users WHERE username=?"
-	err = DB.QueryRow(s, username).Scan(&u.Username, &u.Password)
+	err = DB.QueryRow("SELECT * FROM users WHERE username = ?", username).Scan(&u.Username, &u.Password)
+	defer DB.Close()
 
 	if u.Password != password || err != nil {
+		log.Println(err)
 		return user.User{}, err
 	}
-	defer DB.Close()
 
 	return u, nil
 }
@@ -71,8 +72,8 @@ func CreateDB() error {
 
 	create := `
 	CREATE TABLE users (
- 	        username TEXT NOT NULL,
-        	password TEXT NOT NULL
+ 	        username VARCHAR NOT NULL,
+        	password VARCHAR NOT NULL
     	);`
 
 	_, err = tx.Exec(create)
