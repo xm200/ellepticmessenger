@@ -1,8 +1,8 @@
 package user
 
 type User struct {
-	Username string
-	Password string
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 func Equal(u1, u2 User) bool {

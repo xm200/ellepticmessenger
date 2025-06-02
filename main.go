@@ -53,13 +53,16 @@ func LoginBack(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Println(err)
-		log.Println("%v %v", u.Username, u.Password)
+		log.Printf("%v %v\n", u.Username, u.Password)
 		http.Error(w, "Authentication failed", http.StatusForbidden)
 		return
 	}
-	log.Println("%v %v", u.Username, u.Password)
+	log.Printf("%v %v\n", u.Username, u.Password)
 	priv, pub := generateKeyPair()
-	fmt.Fprintf(w, "Your keypair is %s %s", priv, pub)
+	_, err = fmt.Fprintf(w, "Your keypair is %s %s", priv, pub)
+	if err != nil {
+		return
+	}
 }
 
 func RegisterFront(w http.ResponseWriter, r *http.Request) {
@@ -68,7 +71,10 @@ func RegisterFront(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tmpl.Execute(w, nil)
+	err = tmpl.Execute(w, nil)
+	if err != nil {
+		return
+	}
 
 	log.Println("Somebody want to register")
 }
@@ -82,9 +88,26 @@ func RegisterBack(w http.ResponseWriter, r *http.Request) {
 	storage.CreateUser(username, password)
 	u, err := storage.GetParamsFromDB(username, password)
 	if err != nil {
-		fmt.Fprintf(w, "%v %v %v", u.Username, u.Password, "Some errors")
+		_, err := fmt.Fprintf(w, "%v %v %v", u.Username, u.Password, "Some errors")
+		if err != nil {
+			return
+		}
 	}
 	log.Println("Somebody want to register 2")
+}
+
+func Home(w http.ResponseWriter, r *http.Request) {
+	tmpl, err := template.ParseFiles("./static/html/home.html")
+	if err != nil {
+		return
+	}
+
+	err = tmpl.Execute(w, nil)
+	if err != nil {
+		return
+	}
+
+	log.Println("Somebody want to go home")
 }
 
 func main() {
@@ -106,6 +129,17 @@ func main() {
 		case http.MethodPost:
 			{
 				LoginBack(w, r)
+			}
+		default:
+			http.Error(w, "Method now allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/home", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			{
+				Home(w, r)
 			}
 		default:
 			http.Error(w, "Method now allowed", http.StatusMethodNotAllowed)
@@ -136,7 +170,7 @@ func main() {
 		Addr:         ":443",
 		Handler:      mux,
 		TLSConfig:    cfg,
-		TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0),
+		TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler)),
 	}
 
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
