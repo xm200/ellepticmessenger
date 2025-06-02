@@ -50,11 +50,8 @@ func CreateUser(username, password string) {
 		log.Println(err)
 	}
 
-	_, err = tx.Exec("INSERT INTO users(username, password) VALUES (?, ?)", u.Username, u.Password)
+	_, err = tx.Exec("INSERT INTO users(username, password) VALUES (?, ?)", username, password)
 	tx.Commit()
-	if err != nil {
-		log.Println(err)
-	}
 
 	defer func(db *sql.DB) {
 		err := db.Close()

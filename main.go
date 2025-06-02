@@ -44,7 +44,7 @@ func LoginFront(w http.ResponseWriter, r *http.Request) {
 	log.Println("Somebody want to login")
 }
 
-func LoginBack(w http.ResponseWriter, r *http.Request) (string, string) {
+func LoginBack(w http.ResponseWriter, r *http.Request) {
 	username, password := r.FormValue("username"), r.FormValue("password")
 	if username == "" || password == "" {
 		http.Error(w, "Authentication failed", http.StatusForbidden)
@@ -55,10 +55,11 @@ func LoginBack(w http.ResponseWriter, r *http.Request) (string, string) {
 		log.Println(err)
 		log.Println("%v %v", u.Username, u.Password)
 		http.Error(w, "Authentication failed", http.StatusForbidden)
-		return "", ""
+		return
 	}
 	log.Println("%v %v", u.Username, u.Password)
-	return generateKeyPair()
+	priv, pub := generateKeyPair()
+	fmt.Fprintf(w, "Your keypair is %s %s", priv, pub)
 }
 
 func RegisterFront(w http.ResponseWriter, r *http.Request) {
@@ -79,6 +80,10 @@ func RegisterBack(w http.ResponseWriter, r *http.Request) {
 	}
 
 	storage.CreateUser(username, password)
+	u, err := storage.GetParamsFromDB(username, password)
+	if err != nil {
+		fmt.Fprintf(w, "%v %v %v", u.Username, u.Password, "Some errors")
+	}
 	log.Println("Somebody want to register 2")
 }
 
