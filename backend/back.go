@@ -17,6 +17,21 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
+type BufferedWriter struct {
+	http.ResponseWriter
+	buffer []byte
+}
+
+func (b *BufferedWriter) Write(data []byte) (int, error) {
+	b.buffer = append(b.buffer, data...)
+	return len(data), nil
+}
+
+func (b *BufferedWriter) flush() error {
+	_, err := b.ResponseWriter.Write(b.buffer)
+	return err
+}
+
 var jwtkey []byte
 
 func SetSecretKey() {
@@ -25,15 +40,17 @@ func SetSecretKey() {
 		log.Println(err)
 	}
 	jwtkey = key
-	os.Setenv("SECRET_KEY", string(key))
+	err := os.Setenv("SECRET_KEY", string(key))
+	if err != nil {
+		log.Println(err)
+	}
 }
 
-func SessionSetter(username string) (string, string) {
-	expirationTime := time.Now().Add(24 * time.Hour)
+func SessionSetter(username string) string {
 	claims := &Claims{
 		Username: username,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(expirationTime),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 		},
 	}
 
@@ -42,7 +59,40 @@ func SessionSetter(username string) (string, string) {
 	if err != nil {
 		log.Println("Error while signing token")
 	}
-	return tokenString, expirationTime.Format(time.RFC3339)
+	return tokenString
+}
+
+func SessionGetter(w http.ResponseWriter, r *http.Request) bool {
+	cookie, err := r.Cookie("session")
+
+	if cookie == nil || cookie.Value == "" || err != nil {
+		return false
+	}
+
+	var token *jwt.Token
+
+	if cookie != nil && cookie.Value != "" {
+		token, err = jwt.ParseWithClaims(cookie.Value, &Claims{},
+			func(token *jwt.Token) (interface{}, error) {
+				return []byte(os.Getenv("SECRET_KEY")), nil
+			})
+	}
+
+	if err != nil {
+		log.Println("Error while parsing token")
+		log.Println(err)
+		return false
+	}
+
+	if token == nil {
+		return false
+	}
+
+	if _, ok := token.Claims.(*Claims); ok && token.Valid {
+		return true
+	}
+
+	return false
 }
 
 func generateKeyPair() (string, string) {
@@ -67,6 +117,10 @@ func generateKeyPair() (string, string) {
 }
 
 func Login(w http.ResponseWriter, r *http.Request) {
+	if SessionGetter(w, r) {
+		http.Redirect(w, r, "/", 302)
+	}
+
 	username, password := r.FormValue("username"), r.FormValue("password")
 	log.Println(username, password)
 	if username == "" || password == "" {
@@ -80,23 +134,29 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Authentication failed", http.StatusForbidden)
 		return
 	}
+
 	log.Printf("%v %v\n", u.Username, u.Password)
 	priv, pub := generateKeyPair()
-	_, err = fmt.Fprintf(w, "Your keypair is %s %s", priv, pub)
+	_, err = fmt.Fprintf(w, "Your keypair is %v %v", priv, pub)
 	if err != nil {
-		return
+		log.Println(err)
 	}
 
-	tokenString, _ := SessionSetter(username)
+	log.Println("Successfully logged in")
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Authorization", "Bearer:"+tokenString)
+	w.Header().Set("Set-Cookie", "session="+SessionSetter(username)+"; HttpOnly; Secure; SameSite=Strict")
+	http.Redirect(w, r, "/home", http.StatusFound)
 }
 
 func Register(w http.ResponseWriter, r *http.Request) {
 	username, password := r.FormValue("username"), r.FormValue("password")
 	if username == "" || password == "" {
 		http.Error(w, "Authentication failed", http.StatusForbidden)
+	}
+
+	if SessionGetter(w, r) {
+		http.Redirect(w, r, "/", 302)
 	}
 
 	storage.CreateUser(username, password)

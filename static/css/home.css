@@ -1,13 +1,15 @@
-p {
-    color: #40e0f0;
-    font-size: 24px;
+.main-container {
+    display: flex;
+    height: 100vh;
     justify-content: center;
-    align-items: center;
 }
 
-.box {
-  width: 300px;
-  padding: 20px;
-  border: 1px solid black;
-  margin: 10px;
+body {
+    background-color: #333333;
+}
+
+p {
+    font-family: Arial, sans-serif;
+    font-size: 28px;
+    color: #dc3545;
 }

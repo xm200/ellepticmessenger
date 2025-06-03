@@ -30,14 +30,15 @@ func main() {
 			}
 		case http.MethodPost:
 			{
-				backend.Login(w, r)
+				b := &backend.BufferedWriter{ResponseWriter: w}
+				backend.Login(b, r)
 			}
 		default:
 			http.Error(w, "Method now allowed", http.StatusMethodNotAllowed)
 		}
 	})
 
-	mux.HandleFunc("/home", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			{
