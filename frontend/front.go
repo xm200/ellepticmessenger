@@ -31,15 +31,11 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if backend.SessionGetter(w, r) {
-		http.Redirect(w, r, "/", http.StatusFound)
-	}
-
 	err = tmpl.Execute(w, nil)
 	if err != nil {
 		log.Println(err)
 	}
-
+	http.Redirect(w, r, "/", http.StatusFound)
 	log.Println("Somebody want to login")
 }
 
@@ -49,7 +45,13 @@ func Home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = tmpl.Execute(w, nil)
+	type HaveAccount struct {
+		HaveAccount bool
+	}
+
+	account := HaveAccount{backend.SessionGetter(w, r)}
+
+	err = tmpl.Execute(w, account)
 	if err != nil {
 		log.Println(err)
 	}
