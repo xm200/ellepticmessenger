@@ -5,13 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EMess</title>
     <link rel="stylesheet" href="/static/css/home.css"> <!-- Если используете внешний CSS -->
+    <link rel="icon" href="/favicon.ico">
 </head>
 <body>
     <div class="main-container">
-        <p>Welcome to EMess</p>
-        <p>Register or login</p>
-        <p><a href="/login">Login</a></p>
-        <p><a href="/register">Register</a></p>
+        <h1>Welcome to EMess</h1>
+        {{ if not .HaveAccount }}
+            <p>You are unauthorised</p>
+            <p>
+                <a href="/login">Login</a>
+                <a href="/register">Register</a>
+            </p>
+        {{else}}
+        <ul>
+            {{range .Users}}
+                <li>{{.Nick}}</li>
+            {{end}}
+        </ul>
+        {{end}}
     </div>
 </body>
 </html>

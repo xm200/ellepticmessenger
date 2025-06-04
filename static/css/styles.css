@@ -28,9 +28,11 @@ h1 {
 }
 
 label {
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     margin-bottom: 0.5rem;
-    color: #555;
+    color: #dc3545;
 }
 
 input {
@@ -65,8 +67,14 @@ button:hover {
 a {
     color: #007bff;
     text-decoration: none;
+    justify-content: center;
+    text-align: center;
 }
 
 a:hover {
     text-decoration: underline;
+}
+
+.login-container p {
+    color: #dc3545;
 }

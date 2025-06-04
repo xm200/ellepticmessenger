@@ -8,15 +8,26 @@ body {
     background-color: #333333;
 }
 
+li {
+    font-size: 20px;
+    color: #dc3545;
+}
+
 .main-container {
     text-align: center; /* Центрирует текст внутри контейнера */
     justify-content: center;
 }
 
+.main-container h1 {
+    font-size: 28px;
+    color: #dc3545;
+    margin: 20px;
+}
+
 .main-container p {
     color: #dc3545;
     font-size: 28px;
-    margin: 15px 0; /* Отступы между параграфами */
+    margin: 25px 0; /* Отступы между параграфами */
 }
 
 .main-container a {

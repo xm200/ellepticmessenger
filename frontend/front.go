@@ -2,6 +2,7 @@ package frontend
 
 import (
 	"emess/backend"
+	"emess/storage"
 	"html/template"
 	"log"
 	"net/http"
@@ -11,10 +12,6 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	tmpl, err := template.ParseFiles("./static/html/register.html")
 	if err != nil {
 		log.Println(err)
-	}
-
-	if !backend.SessionGetter(w, r) {
-		http.Redirect(w, r, "/login", http.StatusFound)
 	}
 
 	err = tmpl.Execute(w, nil)
@@ -45,11 +42,17 @@ func Home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	type HaveAccount struct {
+	type page struct {
 		HaveAccount bool
+		Users       []storage.Nickname
 	}
 
-	account := HaveAccount{backend.SessionGetter(w, r)}
+	account := page{}
+	account.HaveAccount = backend.SessionGetter(w, r)
+
+	if account.HaveAccount {
+		account.Users = storage.OnlineGet()
+	}
 
 	err = tmpl.Execute(w, account)
 	if err != nil {

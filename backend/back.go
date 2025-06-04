@@ -65,10 +65,6 @@ func SessionSetter(username string) string {
 func SessionGetter(w http.ResponseWriter, r *http.Request) bool {
 	cookie, err := r.Cookie("session")
 
-	if cookie == nil || cookie.Value == "" || err != nil {
-		return false
-	}
-
 	var token *jwt.Token
 
 	if cookie != nil && cookie.Value != "" {
@@ -79,7 +75,6 @@ func SessionGetter(w http.ResponseWriter, r *http.Request) bool {
 	}
 
 	if err != nil {
-		log.Println("Error while parsing token")
 		log.Println(err)
 		return false
 	}
@@ -146,7 +141,9 @@ func Login(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Set-Cookie", "session="+SessionSetter(username)+"; HttpOnly; Secure; SameSite=Strict")
-	http.Redirect(w, r, "/home", http.StatusFound)
+	storage.OnlineAdd(username)
+	go storage.OnlineDelete(username)
+	http.Redirect(w, r, "/", http.StatusFound)
 }
 
 func Register(w http.ResponseWriter, r *http.Request) {
